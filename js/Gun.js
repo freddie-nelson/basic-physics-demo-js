@@ -3,7 +3,8 @@ import Collider from "./Collider.js";
 const canvas = document.getElementById("canvas");
 const ctx = canvas.getContext("2d");
 
-const FRICTION = 0.5;
+let CANVAS_DIAGONAL = 1000;
+const FRICTION = 0.05;
 const WEIGHT = 0.3;
 
 export default class Gun {
@@ -16,6 +17,7 @@ export default class Gun {
   anchorY;
   lastShootTime = Date.now();
   bullets = [];
+  bulletPower = 60;
 
   constructor(x, y, bulletMass, fill) {
     this.x = x;
@@ -24,6 +26,7 @@ export default class Gun {
     this.anchorY = y - 15;
     this.bulletMass = bulletMass;
     this.fill = fill;
+    CANVAS_DIAGONAL = Math.sqrt(canvas.width ** 2 + canvas.height ** 2);
 
     // this.direction = Math.random() > 0.5 ? 1 : -1;
 
@@ -32,32 +35,38 @@ export default class Gun {
   }
 
   shoot() {
-    const bullet = new Collider(this.anchorX, this.anchorY, this.bulletMass, 10, 10, "red");
-    bullet.velX = 120;
-    bullet.velY = 12;
+    const bullet = new Collider(this.anchorX, this.anchorY, this.bulletMass, 20, 20, "red");
 
-    this.bullets.push({ bullet, created: Date.now(), index: window.colliders.length });
+    const distX = window.mouse.x - this.anchorX;
+    const distY = window.mouse.y - this.anchorY;
+    const distToMouse = Math.sqrt(distX ** 2 + distY ** 2);
+
+    const power = this.bulletPower * (distToMouse / CANVAS_DIAGONAL);
+
+    bullet.velX = Math.cos(this.angle) * power;
+    bullet.velY = Math.sin(this.angle) * power;
+
+    console.log(`velX: ${bullet.velX}, velY: ${bullet.velY}`);
+
+    this.bullets.push({ bullet, created: Date.now(), index: window.colliders.length - 1 });
   }
 
   update() {
-    if (window.mouse.isPressed) {
-      const angle = Math.atan2(window.mouse.y - this.anchorY, window.mouse.x - this.anchorX);
-      console.log(angle);
-      if ((angle * 180) / Math.PI < 10 && (angle * 180) / Math.PI > -70) {
-        this.angle = angle;
-      }
-
-      if (Date.now() - this.lastShootTime > 300) {
-        this.lastShootTime = Date.now();
-        this.shoot();
-      }
+    const angle = Math.atan2(window.mouse.y - this.anchorY, window.mouse.x - this.anchorX);
+    if ((angle * 180) / Math.PI < 0 && (angle * 180) / Math.PI > -70) {
+      this.angle = angle;
     }
 
-    for (let i = this.bullets.length - 1; i >= 0; i--) {
-      if (Date.now()  - this.bullets[i].created > 1000) {
-        window.colliders.splice(this.bullets[i].index, 1);
-      }
+    if (window.mouse.isPressed && Date.now() - this.lastShootTime > 300) {
+      this.lastShootTime = Date.now();
+      this.shoot();
     }
+
+    // for (let i = this.bullets.length - 1; i >= 0; i--) {
+    //   if (Date.now()  - this.bullets[i].created > 1000) {
+    //     window.colliders.splice(this.bullets[i].index, 1);
+    //   }
+    // }
   }
 
   draw() {
